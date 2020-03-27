@@ -3,6 +3,7 @@ import os
 from datetime import datetime
 import functools
 import json
+import logging
 
 import numpy as np
 import pandas as pd
@@ -13,11 +14,16 @@ from sklearn.pipeline import Pipeline
 from sklearn import metrics
 from typing import List, Callable
 
+from . import utils
+
 
 RAND_STATE = 20200219
 DATA_DIR = 'data'
 EXP_DIR = 'exp'
 TEST_DIR = 'test'
+
+LOGGER = logging.getLogger(__name__)
+utils.setup_logging(log_level=logging.DEBUG, logger=LOGGER)
 
 
 def reduce_mem_usage(df, verbose=True):
@@ -51,24 +57,6 @@ def reduce_mem_usage(df, verbose=True):
     return df
 
 
-def load_df(test_set: bool = False, nrows: int = None, sample_ratio: float = None, reduce_mem: bool = False) -> pd.DataFrame:
-    if test_set:
-        tran = pd.read_csv(f'{DATA_DIR}/test_transaction.csv', nrows=nrows)
-        ids = pd.read_csv(f'{DATA_DIR}/test_identity.csv', nrows=nrows)
-    else:
-        tran = pd.read_csv(f'{DATA_DIR}/train_transaction.csv', nrows=nrows)
-        ids = pd.read_csv(f'{DATA_DIR}/train_identity.csv', nrows=nrows)
-
-    if sample_ratio:
-        size = int(len(tran) * sample_ratio)
-        tran = tran.sample(n=size, random_state=RAND_STATE)
-        ids = ids.sample(n=size, random_state=RAND_STATE)
-    df = tran.merge(ids, how='left', on='TransactionID')
-    if reduce_mem:
-        reduce_mem_usage(df)
-    return df
-
-
 def data_split_v1(X: pd.DataFrame, Y: pd.Series):
     # Y = df['isFraud']
     # X = df.drop(columns=['isFraud'])
@@ -94,11 +82,14 @@ def data_split_oversample_v1(X: pd.DataFrame, Y: pd.Series):
 
 
 class Experiment:
-    def __init__(self, df_nrows: int = None, transform_pipe: Pipeline = None,
+    def __init__(self, transform_pipe: Pipeline = None,
                  data_split: Callable = None, model=None, model_class=None,
-                 model_param: dict = None):
-        self.df_nrows = df_nrows
-        self.pipe = transform_pipe
+                 model_param: dict = None, scorer: Callable = None):
+        # self.df_nrows = df_nrows
+        if transform_pipe is None:
+            self.pipe = Pipeline()
+        else:
+            self.pipe = transform_pipe
 
         if data_split is None:
             self.data_split = data_split_v1
@@ -112,35 +103,54 @@ class Experiment:
 
         self.model_param = model_param
 
+        if scorer is None:
+            self.scorer = metrics.roc_auc_score
+        else:
+            self.scorer = scorer
+
     def transform(self, X):
         self.X = self.pipe.fit_transform(X)
         return self.X
 
-    def run(self, save_exp: bool = True) -> float:
-        self.df = load_df(nrows=self.df_nrows)
-        self.y = self.df['isFraud']
-        self.X = self.df.drop(columns=['isFraud'])
+    def run(self, X: pd.DataFrame, Y: pd.DataFrame,
+            save_exp: bool = True) -> float:
+        # self.df = load_df(nrows=self.df_nrows)
+        # self.y = self.df['isFraud']
+        # self.X = self.df.drop(columns=['isFraud'])
 
-        X = self.transform(self.X)
+        self.df_nrows = len(Y)
+
+        X = self.transform(X)
+        LOGGER.info('transform done')
 
         # X = self.X
-        Y = self.y
+        # Y = self.y
+
         X_train, X_val, Y_train, Y_val = self.data_split(X, Y)
+        LOGGER.info('data_split done')
+
         # print(np.where(np.isnan(X_train)))
         self.model.fit(X_train, Y_train)
+        LOGGER.info('model.fit done')
 
         Y_pred = self.model.predict(X_val)
-        self.last_roc_auc = metrics.roc_auc_score(Y_val, Y_pred)
+        LOGGER.info('model.predict done')
+        # self.last_roc_auc = metrics.roc_auc_score(Y_val, Y_pred)
+        self.score = self.scorer(Y_val, Y_pred)
+        LOGGER.info(f'score: {self.score}')
 
         if save_exp:
             self.save_result()
+            LOGGER.info('result saved')
 
-        return self.last_roc_auc
+        return self.score
 
-    def save_result(self):
+    def save_result(self, feature_importance: bool = False):
         save_time = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
         result = {}
-        result['roc_auc'] = self.last_roc_auc
+        # result['roc_auc'] = self.last_roc_auc
+        result['score'] = self.score
+        result['score_metric'] = self.scorer.__name__
         # result['transform'] = self.pipe.get_params(deep=False)
         result['transform'] = list(self.pipe.named_steps.keys())
         result['model'] = self.model.__class__.__name__
@@ -148,12 +158,13 @@ class Experiment:
         result['data_split'] = self.data_split.__name__
         result['num_sample_rows'] = self.df_nrows
         result['save_time'] = save_time
-        if hasattr(self.model, 'feature_importances_'):
-            result['feature_importances_'] = dict(
-                zip(self.X.columns, self.model.feature_importances_.tolist()))
-        if hasattr(self.model, 'feature_importance'):
-            result['feature_importances_'] = dict(
-                zip(self.df.columns, self.model.feature_importance.tolist()))
+        # if feature_importance:
+        #     if hasattr(self.model, 'feature_importances_'):
+        #         result['feature_importances_'] = dict(
+        #             zip(self.X.columns, self.model.feature_importances_.tolist()))
+        #     if hasattr(self.model, 'feature_importance'):
+        #         result['feature_importances_'] = dict(
+        #             zip(self.df.columns, self.model.feature_importance.tolist()))
 
         import pprint
         # pp = pprint.PrettyPrinter(indent=4)
@@ -161,5 +172,5 @@ class Experiment:
 
         if not os.path.exists(EXP_DIR):
             os.makedirs(EXP_DIR)
-        with open(f'{EXP_DIR}/exp_{save_time}_{self.last_roc_auc:.4f}.json', 'w') as f:
+        with open(f'{EXP_DIR}/exp_{save_time}_{self.score:.4f}.json', 'w') as f:
             json.dump(result, f, indent=4)
