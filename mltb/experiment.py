@@ -26,35 +26,15 @@ LOGGER = logging.getLogger(__name__)
 utils.setup_logging(log_level=logging.DEBUG, logger=LOGGER)
 
 
-def reduce_mem_usage(df, verbose=True):
-    numerics = ['int16', 'int32', 'int64', 'float16', 'float32', 'float64']
-    start_mem = df.memory_usage().sum() / 1024**2
-    for col in df.columns:
-        col_type = df[col].dtypes
-        if col_type in numerics:
-            c_min = df[col].min()
-            c_max = df[col].max()
-            if str(col_type)[:3] == 'int':
-                if c_min > np.iinfo(np.int8).min and c_max < np.iinfo(np.int8).max:
-                    df[col] = df[col].astype(np.int8)
-                elif c_min > np.iinfo(np.int16).min and c_max < np.iinfo(np.int16).max:
-                    df[col] = df[col].astype(np.int16)
-                elif c_min > np.iinfo(np.int32).min and c_max < np.iinfo(np.int32).max:
-                    df[col] = df[col].astype(np.int32)
-                elif c_min > np.iinfo(np.int64).min and c_max < np.iinfo(np.int64).max:
-                    df[col] = df[col].astype(np.int64)
-            else:
-                if c_min > np.finfo(np.float16).min and c_max < np.finfo(np.float16).max:
-                    df[col] = df[col].astype(np.float16)
-                elif c_min > np.finfo(np.float32).min and c_max < np.finfo(np.float32).max:
-                    df[col] = df[col].astype(np.float32)
-                else:
-                    df[col] = df[col].astype(np.float64)
-    end_mem = df.memory_usage().sum() / 1024**2
-    if verbose:
-        print('Mem. usage decreased to {:5.2f} Mb ({:.1f}% reduction)'.format(
-            end_mem, 100 * (start_mem - end_mem) / start_mem))
-    return df
+def multilearn_iterative_train_test_split(features, labels, cols, test_size=0.3):
+    from skmultilearn.model_selection import iterative_train_test_split
+
+    train_features, train_labels, test_features, test_labels = iterative_train_test_split(
+        np.array(features), labels, test_size=test_size)
+    # print(type(train_features))
+    train_features = pd.DataFrame(train_features, columns=cols)
+    test_features = pd.DataFrame(test_features, columns=cols)
+    return train_features, test_features, train_labels, test_labels
 
 
 def data_split_v1(X: pd.DataFrame, Y: pd.Series):
@@ -109,8 +89,7 @@ class Experiment:
             self.scorer = scorer
 
     def transform(self, X):
-        self.X = self.pipe.fit_transform(X)
-        return self.X
+        return self.pipe.fit_transform(X)
 
     def run(self, X: pd.DataFrame, Y: pd.DataFrame,
             save_exp: bool = True) -> float:
