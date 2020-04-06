@@ -123,7 +123,7 @@ def bert_transform(train_features, test_features, col_text: str,
     return train_features, test_features
 
 
-class BertTransformer(TransformerMixin, BaseEstimator):
+class BertForSequenceClassificationTransformer(TransformerMixin, BaseEstimator):
     def __init__(self, col_text, model_name, batch_size):
         self.col_text = col_text
         self.model_name = model_name
