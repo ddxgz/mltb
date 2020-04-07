@@ -36,7 +36,7 @@ def word_substitution(text, aug_src='wordnet'):
     return augmented_text
 
 
-def augmented_samples(features, labels, col: str = 'description', level: int = 0,
+def text_augment(features:pd.DataFrame, labels, col: str = 'description', level: int = 0,
                       oversample_weight: int = None, crop_ratio: float = 0.1,
                       aug_method: Callable = None, *args, **kwargs):
     """Used to augment the text col of the data set, the augmented copies will
@@ -44,7 +44,10 @@ def augmented_samples(features, labels, col: str = 'description', level: int = 0
 
     Parameters
     ----------
+    col : the columns name of the text columns to be augmented.
     level : how many copies to append to the dataset. 0 means no append.
+    aug_method : the method used to augment text, if not specified, use random
+    word crop.
 
     crop_ratio : How much ratio of the text to be raondomly cropped from head or
     tail. It actually crops out about 1/ratio of the text.
