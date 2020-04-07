@@ -1,9 +1,15 @@
+import numpy as np
 import pandas as pd
 from sklearn import metrics
 from typing import List
 
 
 def classification_report_avg(y_true, y_pred, cols_avg: List[str] = None):
+    if isinstance(y_true, list):
+        y_true = np.array(y_true)
+    if isinstance(y_pred, list):
+        y_pred = np.array(y_pred)
+
     report = metrics.classification_report(
         y_true, y_pred, output_dict=True, zero_division=0)
     df_report = pd.DataFrame(report).transpose()
