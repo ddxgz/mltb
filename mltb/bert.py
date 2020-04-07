@@ -5,13 +5,9 @@ import pandas as pd
 import torch
 import torch.nn as nn
 from sklearn.base import BaseEstimator, TransformerMixin
-import nltk
 from transformers import (BertPreTrainedModel,
                           DistilBertModel, DistilBertTokenizer, AutoTokenizer, AutoModel, BertModel,
                           BertForSequenceClassification, AdamW, BertModel, BertConfig)
-
-
-nltk.download('punkt')
 
 
 def get_tokenizer_model(model_name: str = "google/bert_uncased_L-2_H-128_A-2",
@@ -51,8 +47,10 @@ def download_once_pretrained_transformers(
 
 
 def bert_tokenize(tokenizer, descs: pd.DataFrame, col_text: str = 'description'):
+    # max_length = descs[col_text].apply(
+    #     lambda x: len(nltk.word_tokenize(x))).max()
     max_length = descs[col_text].apply(
-        lambda x: len(nltk.word_tokenize(x))).max()
+        lambda x: len(tokenizer.tokenize(x))).max()
     if max_length > 512:
         max_length = 512
 
