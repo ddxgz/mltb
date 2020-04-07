@@ -4,6 +4,7 @@ from datetime import datetime
 import functools
 import json
 import logging
+from abc import ABC, abstractmethod
 
 import numpy as np
 import pandas as pd
@@ -153,3 +154,40 @@ class Experiment:
             os.makedirs(EXP_DIR)
         with open(f'{EXP_DIR}/exp_{save_time}_{self.score:.4f}.json', 'w') as f:
             json.dump(result, f, indent=4)
+
+
+class TrainPredBase(ABC):
+    def __init__(self):
+        super().__init__()
+
+    @abstractmethod
+    def load_data(self, data_loader, param):
+        pass
+
+    @abstractmethod
+    def preprocess(self):
+        pass
+
+    @abstractmethod
+    def postprocess(self):
+        pass
+
+    @abstractmethod
+    def run(self, text):
+        raise NotImplementedError(
+            'users must define run() to use this base class')
+
+
+class Trainer(TrainPredBase):
+    def train(self):
+        pass
+
+
+class Predictor(TrainPredBase):
+    def predict(self):
+        pass
+
+
+class Inferencer(TrainPredBase):
+    def inference(self):
+        pass
