@@ -8,6 +8,7 @@ from sklearn.base import BaseEstimator, TransformerMixin
 from transformers import (BertPreTrainedModel,
                           DistilBertModel, DistilBertTokenizer, AutoTokenizer, AutoModel, BertModel,
                           BertForSequenceClassification, AdamW, BertModel, BertConfig)
+from typing import List
 
 
 def get_tokenizer_model(model_name: str = "google/bert_uncased_L-2_H-128_A-2",
@@ -44,6 +45,35 @@ def download_once_pretrained_transformers(
         return save_pretrained_bert(model_name)
 
     return model_path
+
+
+def get_bert_tokens(model_name: str) -> List[str]:
+    model_name = download_once_pretrained_transformers(model_name)
+    vocab_filename = os.path.join(model_name, 'vocab.txt')
+
+    with open(vocab_filename, 'r') as f:
+        bert_vocab = f.readlines()
+
+    bert_vocab = list(map(lambda x: x.rstrip('\n'), bert_vocab))
+    return bert_vocab
+
+
+def save_bert_vocab(new_vocab: List[str],
+                    model_name: str = "google/bert_uncased_L-2_H-128_A-2") -> str:
+    model_path = f'./data/models/{model_name}/'
+
+    if not os.path.exists(model_path):
+        os.makedirs(model_path)
+
+    vocab_filename = os.path.join(model_path, 'vocab.txt')
+
+    if os.path.exists(vocab_filename):
+        os.rename(vocab_filename, os.path.join(model_path, 'vocab.origin.txt'))
+
+    with open(vocab_filename, 'w') as f:
+        f.write('\n'.join(new_vocab))
+
+    return vocab_filename
 
 
 def bert_tokenize(tokenizer, descs: pd.DataFrame, col_text: str = 'description'):
