@@ -15,6 +15,35 @@ nltk.download('wordnet')
 nltk.download('averaged_perceptron_tagger')
 
 
+def top_tfidf_terms(X, tfidf_param: dict, top_n: int = 50) -> pd.DataFrame:
+    """Return as df has 2 cols of terms and tfidf, sorted by descending tfidf.
+
+    Parameters
+    ----------
+    X: text column to be transformed.
+
+    tfidf_param: a dict contains TfidfVectorizer's parameters.
+
+    top_n: the top n terms to return. If None, return all terms.
+    """
+    from sklearn.feature_extraction.text import TfidfVectorizer
+
+    vect = TfidfVectorizer(**tfidf_param)
+    X_vector = vect.fit_transform(X)
+    feature_names = vect.get_feature_names()
+
+    tfidf_means = np.mean(X_vector.toarray(), axis=0)
+
+    if top_n:
+        # Returns the indices that would sort an array.
+        top_idx = np.argsort(tfidf_means)[::-1][:top_n]
+    else:
+        top_idx = np.argsort(tfidf_means)[::-1]
+
+    top_tokens = [(feature_names[i], tfidf_means[i]) for i in top_idx]
+    return pd.DataFrame(top_tokens, columns=['terms', 'tfidf'])
+
+
 def text_random_crop(rec, crop_by: str = 'word', crop_ratio: float = 0.1):
     if crop_by == 'word':
         sents = nltk.word_tokenize(rec)
@@ -37,9 +66,9 @@ def word_substitution(text, aug_src='wordnet'):
     return augmented_text
 
 
-def text_augment(features:pd.DataFrame, labels, col: str = 'description', level: int = 0,
-                      oversample_weight: int = None, crop_ratio: float = 0.1,
-                      aug_method: Callable = None, *args, **kwargs):
+def text_augment(features: pd.DataFrame, labels, col: str = 'description', level: int = 0,
+                 oversample_weight: int = None, crop_ratio: float = 0.1,
+                 aug_method: Callable = None, *args, **kwargs):
     """Used to augment the text col of the data set, the augmented copies will
     be randomly transformed a little
 
