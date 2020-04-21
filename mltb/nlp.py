@@ -16,7 +16,7 @@ nltk.download('averaged_perceptron_tagger')
 
 
 def top_tfidf_terms(X, tfidf_param: dict, top_n: int = 50) -> pd.DataFrame:
-    """Return as df has 2 cols of terms and tfidf, sorted by descending tfidf.
+    """Return as df has 2 cols of `term` and `tfidf`, sorted by descending tfidf.
 
     Parameters
     ----------
@@ -41,7 +41,7 @@ def top_tfidf_terms(X, tfidf_param: dict, top_n: int = 50) -> pd.DataFrame:
         top_idx = np.argsort(tfidf_means)[::-1]
 
     top_tokens = [(feature_names[i], tfidf_means[i]) for i in top_idx]
-    return pd.DataFrame(top_tokens, columns=['terms', 'tfidf'])
+    return pd.DataFrame(top_tokens, columns=['term', 'tfidf'])
 
 
 def text_random_crop(rec, crop_by: str = 'word', crop_ratio: float = 0.1):
@@ -64,6 +64,94 @@ def word_substitution(text, aug_src='wordnet'):
     aug = naw.SynonymAug(aug_src=aug_src)
     augmented_text = aug.augment(text)
     return augmented_text
+
+
+def count_sentence(text):
+    sents = nltk.sent_tokenize(text)
+    return len(sents)
+
+
+def count_token(text):
+    tokens = nltk.word_tokenize(text)
+    return len(tokens)
+
+
+def chop_text(text, i, level):
+    sents = nltk.sent_tokenize(text)
+
+    size = len(sents)
+
+    chop_size = size // level
+
+    if i + 1 == level:
+        sents_chop = sents[chop_size * i:]
+    else:
+        sents_chop = sents[chop_size * i:chop_size * (i + 1)]
+
+    return ' '.join(sents_chop)
+
+
+def text_chop_augment(features: pd.DataFrame, labels, col: str = 'fulltext',
+                      level: int = 3, bypass_limit: int = 50, shuffle: bool = True,
+                      new_col_name: str = None, *args, **kwargs):
+    """Used to augment the text col of the data set, the augmented copies will
+    be chopped into multiple pieces.
+
+    Parameters
+    ----------
+    col : the columns name of the fulltext columns to be augmented.
+
+    level : how many copies to append to the dataset. 0 means no append.
+
+    bypass_limit : the lower limit of tokens to bypass chopping for the short
+    text
+
+    shuffle : if need to shuffle the samples after chopping
+
+    new_col_name : rename the `col` to `new_col_name`. It'll overwrite the col
+    with the same name to `new_col_name`
+    """
+    labels = pd.DataFrame(labels, columns=[
+        f'label_{i}' for i in range(labels.shape[1])])
+    features = features.reset_index(drop=True)
+    df = pd.concat([features, labels], axis='columns')
+
+    # chop based on sentences
+    df['n_tok'] = df[col].apply(count_token)
+
+    bypass = df[df['n_tok'] < bypass_limit]
+
+    chop = df[~df.index.isin(bypass.index)]
+    len_ori = chop.shape[0]
+    chop = pd.concat([chop] * int(level), ignore_index=True)
+
+    for i in range(level):
+        ind = i * len_ori
+        offset = len_ori * (i + 1)
+        chop_text_ = partial(chop_text, i=i, level=level)
+        chop.iloc[ind:offset][col] = chop.iloc[ind:offset][col].apply(
+            chop_text_)
+
+    df = pd.concat([chop, bypass])
+
+    df = df.drop(columns=['n_tok'])
+
+    if shuffle:
+        df = df.sample(frac=1)
+
+    df = df.reset_index(drop=True)
+    # df = df.drop(columns=['index'])
+
+    label_cols = [col for col in df.columns if col.startswith('label')]
+    labels = df[label_cols]
+    features = df.drop(columns=label_cols)
+
+    if new_col_name:
+        # features = features.rename(columns={col: new_col_name})
+        features[new_col_name] = features[col]
+        features = df.drop(columns=[col])
+
+    return features, labels
 
 
 def text_augment(features: pd.DataFrame, labels, col: str = 'description', level: int = 0,
