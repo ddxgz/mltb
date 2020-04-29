@@ -44,20 +44,20 @@ def top_tfidf_terms(X, tfidf_param: dict, top_n: int = 50) -> pd.DataFrame:
     return pd.DataFrame(top_tokens, columns=['term', 'tfidf'])
 
 
-def text_random_crop(rec, crop_by: str = 'word', crop_ratio: float = 0.1):
+def text_random_crop(text, crop_by: str = 'word', crop_ratio: float = 0.1):
     if crop_by == 'word':
-        sents = nltk.word_tokenize(rec)
+        seq = nltk.word_tokenize(text)
     elif crop_by == 'sentence':
-        sents = nltk.sent_tokenize(rec)
-    else:
-        sents = rec
-    size = len(sents)
+        seq = nltk.sent_tokenize(text)
+    else:  # char
+        seq = text
+    size = len(seq)
     chop_size = size // (1 / crop_ratio)
     chop_offset = random.randint(0, int(chop_size))
-    sents_chop = sents[chop_offset:size - chop_offset - 1]
+    cropped = seq[chop_offset:size - chop_offset - 1]
 
     d = TreebankWordDetokenizer()
-    return d.detokenize(sents_chop)
+    return d.detokenize(cropped)
 
 
 def word_substitution(text, aug_src='wordnet'):
