@@ -12,10 +12,11 @@ from typing import List
 
 
 def get_tokenizer_model(model_name: str = "google/bert_uncased_L-2_H-128_A-2",
-                        config: BertConfig = None):
+                        config: BertConfig = None, fast_tokenizer: bool = True):
     model_name = download_once_pretrained_transformers(model_name)
 
-    tokenizer = AutoTokenizer.from_pretrained(model_name)
+    tokenizer = AutoTokenizer.from_pretrained(
+        model_name, use_fast=fast_tokenizer)
     model = AutoModel.from_pretrained(model_name)
 
     return tokenizer, model
@@ -187,6 +188,12 @@ class BertForSequenceClassificationTransformer(TransformerMixin, BaseEstimator):
 
 
 class BertForSequenceMultiLabelClassification(BertPreTrainedModel):
+    """This is basically a copy of the `BertForSequenceClassification` class 
+    from huggingface's Transformers. The small changes added in `forward()` are 
+    - adding sigmoid operation on the logits from classification 
+    - adding labels = torch.max(labels, 1)[1] for supporting multilabel.
+    """
+
     def __init__(self, config):
         super(BertForSequenceMultiLabelClassification, self).__init__(config)
         self.num_labels = config.num_labels
