@@ -10,10 +10,6 @@ import nlpaug.augmenter.word as naw
 from typing import List, Callable
 
 
-nltk.download('punkt')
-nltk.download('wordnet')
-nltk.download('averaged_perceptron_tagger')
-
 
 def top_tfidf_terms(X, tfidf_param: dict, top_n: int = 50) -> pd.DataFrame:
     """Return as df has 2 cols of `term` and `tfidf`, sorted by descending tfidf.
