@@ -16,6 +16,71 @@ import nltk
 from typing import List, Callable
 
 
+class OneHotDfEncoder(TransformerMixin, BaseEstimator):
+    """Encode categoricals in pd.DataFrame, and return the data frame with the 
+    encoded categories. The `save()` and `load()` enables load from trained 
+    encoder to use for new data.
+
+    Parameters:
+    ----------
+    cols: the cloumns in the dataframe to be encoded
+
+    save_to: the path + file name to persist the encoder after fit and
+    transform, without 'joblib.gz' suffix
+
+    load_from: the path + file name to load fitted encoder, without 'joblib.gz' suffix
+    """
+    def __init__(self, cols: List[str], load_from=None, save_to=None):
+        self.cols = cols
+        self.load_from = load_from
+        if load_from:
+            self.encoder = self.load()
+        else:
+            self.encoder = preprocessing.OneHotEncoder(handle_unknown='ignore')
+        
+        self.save_to = save_to
+
+    def fit(self, X, y=None):
+        return self
+
+    def transform(self, dff):
+        if not self.cols:
+            return dff
+            
+        cats = dff.loc[:,self.cols]
+        cats = cats.astype('category')
+
+        if self.load_from:
+            traned = self.encoder.transform(cats)
+        else:
+            traned = self.encoder.fit_transform(cats)
+        
+        if self.save_to:
+            self.save()
+
+        new_cols = [f'{self.cols[i]}_{cat}' 
+                    for i, cat_col in enumerate(self.encoder.categories_) 
+                    for cat in cat_col]
+        cats_enc = pd.DataFrame.sparse.from_spmatrix(traned,
+                                                     columns=new_cols,
+                                                     index=dff.index)
+
+        nums = dff.drop(columns=self.cols)
+        return pd.concat([nums, cats_enc], axis='columns')
+
+    def save(self):
+        import joblib
+
+        filename = f'{self.save_to}.joblib.gz'
+        m = joblib.dump(self.encoder, filename, compress=3)
+    
+    def load(self):
+        import joblib
+
+        filename = f'{self.load_from}.joblib.gz'
+        return joblib.load(filename)
+
+
 def cat_cols(df: pd.DataFrame) -> List[str]:
     cols: List[str] = []
 
