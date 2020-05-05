@@ -126,20 +126,17 @@ class NumColsNegFiller(TransformerMixin, BaseEstimator):
 
 
 class NumColsRatioDropper(TransformerMixin, BaseEstimator):
-    def __init__(self, ratio: float = 0.5):
+    def __init__(self, cols, ratio: float = 0.5):
+        self.cols = cols
         self.ratio = ratio
 
     def fit(self, X, y=None):
         return self
 
     def transform(self, df):
-        # print(X[self.attribute_names].columns)
-
-        cols_cat = cat_cols(df)
-        cats = df[cols_cat]
         # nums = df.drop(columns=cols_cat)
         # cols_num = df[~df[cols_cat]].columns
-        cols_num = list(set(df.columns) - set(cols_cat))
+        cols_num = self.cols
         nums = df[cols_num]
 
         ratio = self.ratio * 100
@@ -172,23 +169,6 @@ class DataFrameSelector(TransformerMixin, BaseEstimator):
         print(X[self.attribute_names].columns)
 
         return X[self.attribute_names].values
-
-
-class DummyEncoder(TransformerMixin, BaseEstimator):
-
-    def fit(self, X, y=None):
-        return self
-
-    def transform(self, df):
-        cols_cat = cat_cols(df)
-
-        cats = df[cols_cat]
-        noncats = df.drop(columns=cols_cat)
-
-        cats = cats.astype('category')
-        cats_enc = pd.get_dummies(cats, prefix=cols_cat, dummy_na=True)
-
-        return noncats.join(cats_enc)
 
 
 # Label encoding is OK when we're using tree models
