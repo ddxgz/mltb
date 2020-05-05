@@ -33,6 +33,7 @@ class OneHotDfEncoder(TransformerMixin, BaseEstimator):
 
     load_from: the path + file name to load fitted encoder, without 'joblib.gz' suffix
     """
+
     def __init__(self, cols: List[str], load_from=None, save_to=None):
         self.cols = cols
         self.load_from = load_from
@@ -40,7 +41,7 @@ class OneHotDfEncoder(TransformerMixin, BaseEstimator):
             self.encoder = self.load()
         else:
             self.encoder = preprocessing.OneHotEncoder(handle_unknown='ignore')
-        
+
         self.save_to = save_to
 
     def fit(self, X, y=None):
@@ -49,20 +50,20 @@ class OneHotDfEncoder(TransformerMixin, BaseEstimator):
     def transform(self, dff):
         if not self.cols:
             return dff
-            
-        cats = dff.loc[:,self.cols]
+
+        cats = dff.loc[:, self.cols]
         cats = cats.astype('category')
 
         if self.load_from:
             traned = self.encoder.transform(cats)
         else:
             traned = self.encoder.fit_transform(cats)
-        
+
         if self.save_to:
             self.save()
 
-        new_cols = [f'{self.cols[i]}_{cat}' 
-                    for i, cat_col in enumerate(self.encoder.categories_) 
+        new_cols = [f'{self.cols[i]}_{cat}'
+                    for i, cat_col in enumerate(self.encoder.categories_)
                     for cat in cat_col]
         cats_enc = pd.DataFrame.sparse.from_spmatrix(traned,
                                                      columns=new_cols,
@@ -76,7 +77,7 @@ class OneHotDfEncoder(TransformerMixin, BaseEstimator):
 
         filename = f'{self.save_to}.joblib.gz'
         m = joblib.dump(self.encoder, filename, compress=3)
-    
+
     def load(self):
         import joblib
 
@@ -97,7 +98,7 @@ def missing_ratio_col(df):
 
 
 class ColsNaMedianFiller(TransformerMixin, BaseEstimator):
-    def __init__(self, cols: List[str]=[]):
+    def __init__(self, cols: List[str] = []):
         self.cols = cols
 
     def fit(self, X, y=None):
@@ -112,7 +113,7 @@ class ColsNaMedianFiller(TransformerMixin, BaseEstimator):
 
 
 class NumColsNegFiller(TransformerMixin, BaseEstimator):
-    def __init__(self, cols: List[str]=[]):
+    def __init__(self, cols: List[str] = []):
         self.cols = cols
 
     def fit(self, X, y=None):
@@ -171,21 +172,17 @@ class DataFrameSelector(TransformerMixin, BaseEstimator):
         return X[self.attribute_names].values
 
 
-# Label encoding is OK when we're using tree models
-class MyLabelEncoder(TransformerMixin, BaseEstimator):
+class LabelDfEncoder(TransformerMixin, BaseEstimator):
+    def __init__(self, cols):
+        self.cols = cols
 
     def fit(self, X, y=None):
         return self
 
     def transform(self, df):
-        cols_cat = cat_cols(df)
 
-        for col in cols_cat:
-            df[col] = df[col].astype('category').cat.add_categories(
-                'missing').fillna('missing')
+        for col in self.cols:
             le = preprocessing.LabelEncoder()
-            # TODO add test set together to encoding
-            # le.fit(df[col].astype(str).values)
             df[col] = le.fit_transform(df[col].astype(str).values)
         return df
 
