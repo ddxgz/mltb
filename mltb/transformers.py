@@ -1,3 +1,6 @@
+""" This module includes a few scikit-learn transformers that use pandas.DataFrame
+as input and output a data frame retains the same (almost) structure.
+"""
 import os
 from datetime import datetime
 import functools
@@ -81,42 +84,6 @@ class OneHotDfEncoder(TransformerMixin, BaseEstimator):
         return joblib.load(filename)
 
 
-def cat_cols(df: pd.DataFrame) -> List[str]:
-    cols: List[str] = []
-
-    cols.append('ProductCD')
-
-    cols_card = [c for c in df.columns if 'card' in c]
-    cols.extend(cols_card)
-
-    cols_addr = ['addr1', 'addr2']
-    cols.extend(cols_addr)
-
-    cols_emaildomain = [c for c in df if 'email' in c]
-    cols.extend(cols_emaildomain)
-
-    cols_M = [c for c in df if c.startswith('M')]
-    cols.extend(cols_M)
-
-    cols.extend(['DeviceType', 'DeviceInfo'])
-
-    cols_id = [c for c in df if c.startswith('id')]
-    cols.extend(cols_id)
-
-    return cols
-
-
-def num_cols(df: pd.DataFrame, target_col='isFraud') -> List[str]:
-    cols_cat = cat_cols(df)
-    cats = df[cols_cat]
-    cols_num = list(set(df.columns) - set(cols_cat))
-
-    if target_col in cols_num:
-        cols_num.remove(target_col)
-
-    return cols_num
-
-
 def missing_ratio_col(df):
     df_na = (df.isna().sum() / len(df)) * 100
     if isinstance(df, pd.DataFrame):
@@ -129,16 +96,15 @@ def missing_ratio_col(df):
     return missing_data
 
 
-class NumColsNaMedianFiller(TransformerMixin, BaseEstimator):
+class ColsNaMedianFiller(TransformerMixin, BaseEstimator):
+    def __init__(self, cols: List[str]=[]):
+        self.cols = cols
 
     def fit(self, X, y=None):
         return self
 
     def transform(self, df):
-        cols_cat = cat_cols(df)
-        cols_num = list(set(df.columns) - set(cols_cat))
-
-        for col in cols_num:
+        for col in self.cols:
             median = df[col].median()
             df[col].fillna(median, inplace=True)
 
@@ -146,14 +112,14 @@ class NumColsNaMedianFiller(TransformerMixin, BaseEstimator):
 
 
 class NumColsNegFiller(TransformerMixin, BaseEstimator):
+    def __init__(self, cols: List[str]=[]):
+        self.cols = cols
 
     def fit(self, X, y=None):
         return self
 
     def transform(self, df):
-        cols_num = num_cols(df)
-
-        for col in cols_num:
+        for col in self.cols:
             df[col].fillna(-999, inplace=True)
 
         return df
