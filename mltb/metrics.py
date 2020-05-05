@@ -4,6 +4,26 @@ from sklearn import metrics
 from typing import List
 
 
+def rmse_cal(y_true, y_pred, log: bool=False, negate=False):
+    if log:
+        # to add 1 in case the predicted values are not positive
+        y_true = np.log1p(y_true)
+        y_pred = np.log1p(y_pred)
+    # return -np.sqrt(mean_squared_error(y_true, y_pred))
+    if negate:
+        return -np.sqrt(np.sum(np.square(y_pred - y_true)) / len(y_pred))
+    return np.sqrt(np.sum(np.square(y_pred - y_true)) / len(y_pred))
+
+
+# if the custom score function is a loss (greater_is_better=False), the output
+# of the python function is negated by the scorer object, conforming to the
+# cross validation convention that scorers return higher values for better
+# models.
+# rmsle_cal = partial(rmse_cal, True)
+RMSE = metrics.make_scorer(rmse_cal, log=False, greater_is_better=False)
+RMSLE = metrics.make_scorer(rmse_cal, log=True, greater_is_better=False)
+
+
 def classification_report_avg(y_true, y_pred, cols_avg: List[str] = None):
     if isinstance(y_true, list):
         y_true = np.array(y_true)
