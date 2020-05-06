@@ -19,6 +19,18 @@ import nltk
 from typing import List, Callable
 
 
+def missing_ratio_col(df):
+    df_na = (df.isna().sum() / len(df)) * 100
+    if isinstance(df, pd.DataFrame):
+        df_na = df_na.drop(
+            df_na[df_na == 0].index).sort_values(ascending=False)
+        missing_data = pd.DataFrame({'Missing Ratio %': df_na})
+    else:
+        missing_data = pd.DataFrame({'Missing Ratio %': df_na}, index=[0])
+
+    return missing_data
+
+
 class OneHotDfEncoder(TransformerMixin, BaseEstimator):
     """Encode categoricals in pd.DataFrame, and return the data frame with the 
     encoded categories. The `save()` and `load()` enables load from trained 
@@ -85,18 +97,6 @@ class OneHotDfEncoder(TransformerMixin, BaseEstimator):
         return joblib.load(filename)
 
 
-def missing_ratio_col(df):
-    df_na = (df.isna().sum() / len(df)) * 100
-    if isinstance(df, pd.DataFrame):
-        df_na = df_na.drop(
-            df_na[df_na == 0].index).sort_values(ascending=False)
-        missing_data = pd.DataFrame({'Missing Ratio %': df_na})
-    else:
-        missing_data = pd.DataFrame({'Missing Ratio %': df_na}, index=[0])
-
-    return missing_data
-
-
 class ColsNaMedianFiller(TransformerMixin, BaseEstimator):
     def __init__(self, cols: List[str] = []):
         self.cols = cols
@@ -112,7 +112,7 @@ class ColsNaMedianFiller(TransformerMixin, BaseEstimator):
         return df
 
 
-class NumColsNegFiller(TransformerMixin, BaseEstimator):
+class ColsNaNegFiller(TransformerMixin, BaseEstimator):
     def __init__(self, cols: List[str] = []):
         self.cols = cols
 
@@ -126,7 +126,7 @@ class NumColsNegFiller(TransformerMixin, BaseEstimator):
         return df
 
 
-class NumColsRatioDropper(TransformerMixin, BaseEstimator):
+class DropByNaRatioTransformer(TransformerMixin, BaseEstimator):
     def __init__(self, cols, ratio: float = 0.5):
         self.cols = cols
         self.ratio = ratio
@@ -167,7 +167,7 @@ class DataFrameSelector(TransformerMixin, BaseEstimator):
         return self
 
     def transform(self, X):
-        print(X[self.attribute_names].columns)
+        # print(X[self.attribute_names].columns)
 
         return X[self.attribute_names].values
 
