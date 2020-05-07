@@ -7,10 +7,34 @@ import json
 import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
+import seaborn as sns
 import torch
-
 from sklearn.metrics import confusion_matrix
 from sklearn.utils.multiclass import unique_labels
+from sklearn.decomposition import PCA
+from typing import Tuple
+
+
+def pca_plot(n_components, df, col_color: str = None,
+             figsize: Tuple = (10, 8)):
+    pca = PCA(n_components=n_components)
+    X_pca = pca.fit_transform(df)
+    fig, ax = plt.subplots(figsize=figsize)
+
+    from mpl_toolkits.mplot3d import Axes3D
+
+    if col_color:
+        col_c = df[col_color]
+    else:
+        col_c = None
+
+    if n_components == 3:
+        Axes3D(fig).scatter(X_pca[:, 0], X_pca[:, 1], X_pca[:, 2],
+                            c=col_c, s=20)
+    elif n_components == 2:
+        sns.scatterplot(X_pca[:, 0], X_pca[:, 1], hue=col_c)
+    else:
+        print('Not supported n_components!')
 
 
 def create_loss_plot(exp_dir, epochs, train_losses, test_losses, fig_name='loss'):
