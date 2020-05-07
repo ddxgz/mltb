@@ -17,6 +17,14 @@ from typing import Tuple
 
 def pca_plot(n_components, df, col_color: str = None,
              figsize: Tuple = (10, 8)):
+    """Directly reduce the dimensionality into 2 or 3 by PCA, and then scatter
+    plot the data points.
+    """
+    if df.shape[1] <= n_components:
+        print('The dimension of the data frame is <= n_components, no need of '
+              'reduction.')
+        return
+
     pca = PCA(n_components=n_components)
     X_pca = pca.fit_transform(df)
     fig, ax = plt.subplots(figsize=figsize)
