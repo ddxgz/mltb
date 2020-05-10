@@ -126,6 +126,22 @@ class ColsNaNegFiller(TransformerMixin, BaseEstimator):
         return df
 
 
+class ColsNaStrFiller(TransformerMixin, BaseEstimator):
+    def __init__(self, cols: List[str] = [], fill_str: str='missing'):
+        self.cols = cols
+        self.fill_str = fill_str
+
+    def fit(self, X, y=None):
+        return self
+
+    def transform(self, df):
+        for col in self.cols:
+            df[col] = df[col].cat.add_categories(self.fill_str).fillna(self.fill_str)
+            # df[col].fillna(self.fill_str, inplace=True)
+
+        return df
+
+
 class DropByNaRatioTransformer(TransformerMixin, BaseEstimator):
     def __init__(self, cols, ratio: float = 0.5):
         self.cols = cols
