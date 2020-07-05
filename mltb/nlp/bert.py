@@ -189,7 +189,7 @@ class BertForSequenceClassificationTransformer(TransformerMixin, BaseEstimator):
 
 class BertForSequenceMultiLabelClassification(BertPreTrainedModel):
     """This is basically a copy of the `BertForSequenceClassification` class 
-    from huggingface's Transformers. The small changes added in `forward()` are 
+    from huggingface Transformers. The small changes added in `forward()` are 
     - adding sigmoid operation on the logits from classification 
     - adding labels = torch.max(labels, 1)[1] for supporting multilabel.
     """

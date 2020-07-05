@@ -1,5 +1,6 @@
 """ This module includes a few scikit-learn transformers that use pandas.DataFrame
-as input and output a data frame retains the same (almost) structure.
+as input and output a data frame retains the same (almost) structure. These 
+transformers are not for performance but for convenience.
 """
 import os
 from datetime import datetime
